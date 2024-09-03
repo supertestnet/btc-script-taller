@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, user-scalable=no">
+    <meta charset="UTF-8">
+        <script src="https://unpkg.com/@cmdcode/tapscript@1.4.0"></script>
+        <script src="https://bundle.run/noble-secp256k1@1.2.14"></script>
+        <script>
+        var $ = document.querySelector.bind( document );
+        var $$ = document.querySelectorAll.bind( document );
+        var red = "testnet";
+        var bytesToHex = bytes => bytes.reduce( ( str, byte ) => str + byte.toString( 16 ).padStart( 2, "0" ), "" );
+    </script>
+    <script>
+        var getVin = ( txid, vout, cant, addy ) => ({
+            txid,
+            vout,
+            prevout: {
+                value: cant,
+                scriptPubKey: tapscript.Address.toScriptPubKey(addy),
+            },
+        });
+        var getVout = ( cant, addy ) => ({
+            value: cant,
+            scriptPubKey: tapscript.Address.toScriptPubKey(addy),
+        });
+    </script>
+    <style>
+        * {box-sizing: border-box; font-size: 1.15rem; font-family: Arial, sans-serif;}
+        html {max-width: 800px; padding: 3rem 1rem; margin: auto; line-height: 1.25; padding: 0;}
+        body {margin: 3rem 1rem; word-wrap: break-word;}
+        h1 {font-size: 2rem;}
+    </style>
+</head>
+<body>
+    <h1>Bienvenido al contrato de deportes</h1>
+    <p>Tu dirección es <span class="direccion_jugador"></span></p>
+    <p><button class="juega_btn">Juega</button></p>
+    <script>
+        // crea un pare de llaves y un dirección de bitcoin
+        var privkey = bytesToHex( nobleSecp256k1.utils.randomPrivateKey() );
+        var pubkey = nobleSecp256k1.getPublicKey( privkey, true ).substring( 2 );
+        var direccion_jugador = tapscript.Address.p2tr.fromPubKey( pubkey, red );
+        $( '.direccion_jugador' ).innerText = direccion_jugador;
+        console.log( `tu dirección es ${direccion_jugador}` );
+    </script>
+    <script>
+        // prepara el botón del juego
+        $( '.juega_btn' ).onclick = async () => {
+            // obtenga la dirección de tu oponente
+            var oponente_direccion = prompt( `entra la dirección de tu oponente (si no puede verla, digalo ir a la consola de su navegador y desplácese hasta la parte superior de la página)` );
+            var oponente_llave = tapscript.Address.toScriptPubKey( oponente_direccion )[ 1 ];
+            // obtenga info sobre el juego
+            var argentina_hash = prompt( `entra el hash de Argentina` );
+            var portugal_hash = prompt( `entra el hash de Portugal` );
+
+            // agrega fundos
+            var txid = prompt( `mande dinero a tu dirección (si no puedes verla, va a la consola de tu navegador y desplácese hasta la parte superior de la página) y entra el txid de la transación donde lo hizaste` );
+            var vout = Number( prompt( `y el vout` ) );
+            var cant = Number( prompt( `y la cantidad` ) );
+            // pone las llaves publicas en orden correcto
+            var prefiero_argentina = confirm( `haz click en 'ok' si prefieres Argentina, o de lo contrario haz click en 'cancel'` );
+            if ( prefiero_argentina ) var llaves = [ pubkey, oponente_llave ];
+            else var llaves = [ oponente_llave, pubkey ];
+            // prepara el contrato inteligente
+            var contrato = [
+                [
+                    "OP_RIPEMD160", argentina_hash, "OP_EQUALVERIFY",
+                    llaves[ 0 ], "OP_CHECKSIG",
+                ],
+                [
+                    "OP_RIPEMD160", portugal_hash, "OP_EQUALVERIFY",
+                    llaves[ 1 ], "OP_CHECKSIG",
+                ],
+            ];
+            // convierte el contrato a una dirección de bitcoin
+            var backup_llave = "ab".repeat( 32 );
+            var arbol = contrato.map( s => tapscript.Tap.encodeScript( s ) );
+            var [ tpubkey ] = tapscript.Tap.getPubKey( backup_llave, { tree: arbol });
+            var contrato_direccion = tapscript.Address.p2tr.fromPubKey( tpubkey, red );
+            console.log( `contrato_direccion:`, contrato_direccion );
+            console.log( `mande esta dato a tu oponente` );
+            console.log( JSON.stringify({
+                txid: txid,
+                vout: vout,
+                cant: cant,
+                direccion_jugador: direccion_jugador,
+                contrato_direccion: contrato_direccion,
+            }) );
+            alert( `espera mientras tu oponente llega a esto paso. Cuando ustedes dos estan a esto paso, haz click en 'ok'. Hará datos en la consola de tu navegador para compartir con su oponente en el paso proximo.` );
+            // valida los datos de utxo de tu oponente
+            var oponente_datos = JSON.parse( prompt( `entra los datos enviado por tu oponente` ) );
+            if ( contrato_direccion != oponente_datos[ "contrato_direccion" ] ) return alert( `Tu oponente mandó una contrato diferente que tuyo, que significa uno de tres cosas pasó incorrecto: uno de ustededes entró la llave de la otra incorrectamente, uno de ustededes entró los hashes incorrectamente, or ustedes dos por accidente apostaron en el equipo mismo. Por favor actualice la página y intente nuevamente` );
+            var oponente_txid = oponente_datos[ "txid" ];
+            var oponente_vout = oponente_datos[ "vout" ];
+            var oponente_cant = oponente_datos[ "cant" ];
+            var oponente_direccion = oponente_datos["direccion_jugador"];
+            if ( oponente_cant != cant ) alert( `Tu oponente quiere apostar una cantidad diferente que tú, especificamente, apuestan ${oponente_cant} sats mientras apuestas ${cant} sats. Haz click en 'ok' si quieres esto, o actualice la página y intente nuevamente` );
+            var txdatos = tapscript.Tx.create({
+                vin: [
+                    getVin( oponente_txid, oponente_vout, oponente_cant, oponente_direccion ),
+                    getVin( txid, vout, cant, direccion_jugador ),
+                ],
+                vout: [getVout( cant + oponente_cant - 500, contrato_direccion )],
+            });
+            // llega a un acuerdo del orden de entradas -- es decir,
+            // quien apostó en Argentina tiene la entrada primera
+            var mia_vin = 1;
+            if ( prefiero_argentina ) {
+                txdatos.vin.reverse();
+                mia_vin = 0;
+            }
+            // firma la transación que agrega fundos al contrato
+            var firma = tapscript.Signer.taproot.sign( privkey, txdatos, mia_vin ).hex;
+            // si apuestas en Argentina, obtenga la firma de tu oponente
+            // y agrega las dos firmas a la transación y publicala
+            if ( prefiero_argentina ) {
+                var opon_firma = prompt(`entra la firma de tu oponente`);
+                txdatos.vin[ 0 ].witness = [ firma ];
+                txdatos.vin[ 1 ].witness = [ opon_firma ];
+                console.log( `publica esta transación:` );
+                console.log( tapscript.Tx.encode( txdatos ).hex );
+                alert( `publica la tx en la consola de tu navegador` );
+            } else {
+                console.log( `mande esta firma a tu oponente:` );
+                console.log( firma );
+                alert( `mande a tu oponente la firma en tu consola` );
+            }
+            // resolviera el contrato inteligente
+            var contrato_txid = tapscript.Tx.util.getTxid( txdatos );
+            var contrato_vout = 0;
+            var contrato_cant = cant + oponente_cant - 500;
+            var gane = confirm( `Haz click en 'ok' si tu equipo ganó` );
+            if ( !gane ) {
+                alert( `Que triste! Tu oponente ganó el dinero. Considera actualizando la página para tentar de nuevo` );
+            } else {
+                // prepara la transación de resolución
+                var direccion_destino = prompt( `Ganaste! Entra una dirección de bitcoin donde quieres enviar el dinero` );
+                var mia_tapleaf = prefiero_argentina ? 0 : 1;
+                var secreto = prompt( `Entra el secreto revelado por el oráculo` );
+                var resolucion_txdatos = tapscript.Tx.create({
+                    vin: [getVin( contrato_txid, contrato_vout, contrato_cant, contrato_direccion )],
+                    vout: [getVout( contrato_cant - 500, direccion_destino )],
+                });
+                // firma y publica la transación de resolución
+                var target = tapscript.Tap.encodeScript( contrato[ mia_tapleaf ] );
+                var firma = tapscript.Signer.taproot.sign( privkey, resolucion_txdatos, 0, { extension: target });
+                var [ _, cblock ] = tapscript.Tap.getPubKey( backup_llave, { tree: arbol, target });
+                resolucion_txdatos.vin[ 0 ].witness = [ firma, secreto, contrato[ mia_tapleaf ], cblock ];
+                console.log( `publica esta transación:` );
+                console.log(tapscript.Tx.encode(resolucion_txdatos).hex);
+                alert( `publica la tx en la consola de tu navegador. El juego teriminó! Actualizar la página para jogar de nuevo` );
+            }
+        }
+    </script>
+</body>
+</html>

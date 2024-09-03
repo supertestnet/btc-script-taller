@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, user-scalable=no">
+    <meta charset="UTF-8">
+    <script src="https://unpkg.com/@dashincubator/ripemd160/ripemd160.js"></script>
+    <script>
+        var $ = document.querySelector.bind( document );
+        var $$ = document.querySelectorAll.bind( document );
+        var getPreimage = () => window.crypto.getRandomValues( new Uint8Array( 20 ) );
+        var getHash = b => RIPEMD160.create().update( b ).digest();
+        var bytesToHex = bytes => bytes.reduce( ( str, byte ) => str + byte.toString( 16 ).padStart( 2, "0" ), "" );
+    </script>
+    <style>
+        * {box-sizing: border-box; font-size: 1.15rem; font-family: Arial, sans-serif;}
+        html {max-width: 800px; padding: 3rem 1rem; margin: auto; line-height: 1.25; padding: 0;}
+        body {margin: 3rem 1rem;}
+        h1 {font-size: 2rem;}
+        .oscuro {display: none !important;}
+        .central {text-align: center;}
+        .grueso {font-weight: bold;}
+        .oraculo_solo {border: 4px dotted black;border-radius: 1rem;padding: 1rem;}
+    </style>
+</head>
+<body>
+    <h1>Yo soy el oráculo</h1>
+    <p>Después de un partido proximo entre Argentina y Portugal, yo revelaré el secreto de uno de estos hashes RipeMD160.</p>
+    <p class="central grueso">Hash de Argentina</p>
+    <p class="argentina_hash central"></p>
+    <p class="central grueso">Hash de Portugal</p>
+    <p class="portugal_hash central"></p>
+    <div class="oraculo_solo central">
+        <p>Nota: no mires hasta que termine el juego!</p>
+        <p><button class="argentina_gano">Argentina ganó</button> <button class="portugal_gano">Portugal ganó</button></p>
+        <div class="argentina oscuro">
+            <p>El secreto de Argentina es:</p>
+            <p class="argentina_secreto"></p>
+        </div>
+        <div class="portugal oscuro">
+            <p>El secreto de Portugal es:</p>
+            <p class="portugal_secreto"></p>
+        </div>
+    </div>
+    <script>
+     $( '.argentina_gano' ).onclick = () => {$( '.argentina' ).classList.remove( "oscuro" );$( '.portugal' ).classList.add( "oscuro" );}; $( '.portugal_gano' ).onclick = () => {$( '.argentina' ).classList.add( "oscuro" );$( '.portugal' ).classList.remove( "oscuro" );}; var argentina_secreto = getPreimage(); var argentina_hash = getHash( argentina_secreto ); $( '.argentina_hash' ).innerText = bytesToHex( argentina_hash ); $( '.argentina_secreto' ).innerText = bytesToHex( argentina_secreto ); var portugal_secreto = getPreimage(); var portugal_hash = getHash( portugal_secreto ); $( '.portugal_hash' ).innerText = bytesToHex( portugal_hash ); $( '.portugal_secreto' ).innerText = bytesToHex( portugal_secreto );
+    </script>
+</body>
+</html>

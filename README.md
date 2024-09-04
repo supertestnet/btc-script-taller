@@ -5,7 +5,7 @@ Ejemplo basico de un contrato inteligente que usa un oráculo y bitcoin script, 
 https://tinyurl.com/btc-script-taller
 
 # Como usar
-Abre Open oraculo.html in tu navegador favorito. Abre DOS copias de jugadores.html (copy 1, copy 2) en DOS NAVEGADORES DIFERENTES. Entonces abre el console de desarollo (ctrl+shift+i en chrome y firefox) en cada copia de jugadores.html. Haz click en Juego en los dos y sigue los instruciones.
+Abre Open [oraculo.html](https://supertestnet.github.io/btc-script-taller/oraculo.html) in tu navegador favorito. Abre DOS copias de jugadores.html ([copy 1](https://supertestnet.github.io/btc-script-taller/jugadores.html), [copy 2](https://supertestnet.github.io/btc-script-taller/jugadores.html)) en DOS NAVEGADORES DIFERENTES. Entonces abre el console de desarollo (ctrl+shift+i en chrome y firefox) en cada copia de jugadores.html. Haz click en Juego en los dos y sigue los instruciones.
 
 # Como-crear video
 https://www.youtube.com/watch?v=cHLXK5HjCVg
